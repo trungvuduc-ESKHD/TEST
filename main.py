@@ -8,7 +8,7 @@ import hashlib
 # Configuration
 
 st.set_page_config(
-page_title=“Quản lý Địa chỉ Nhà cung cấp”,
+page_title='Quản lý Địa chỉ Nhà cung cấp',
 page_icon=“📦”,
 layout=“wide”,
 initial_sidebar_state=“expanded”
