@@ -12,11 +12,11 @@ def init_supabase_connection():
 
 supabase: Client = init_supabase_connection()
 
-# --- Tạo ID ---
+# --- Hàm tạo ID duy nhất ---
 def hash_supplier_id(name, city):
     return hashlib.md5(f"{name}_{city}".encode()).hexdigest()[:8]
 
-# --- Lưu dữ liệu ---
+# --- Lưu vào Supabase ---
 def save_to_supabase(data):
     supplier_id = hash_supplier_id(data["display_name"], data["city"])
     data["id"] = supplier_id
@@ -28,7 +28,7 @@ def save_to_supabase(data):
     else:
         supabase.table("supplier_addresses").insert(data).execute()
 
-# --- Giao diện nhập ---
+# --- Giao diện Form nhập liệu ---
 st.set_page_config(page_title="Địa chỉ Nhà cung cấp", layout="centered")
 st.title("📦 Cập nhật địa chỉ nhà cung cấp")
 
