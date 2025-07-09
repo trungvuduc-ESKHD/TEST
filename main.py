@@ -9,8 +9,8 @@ import hashlib
 
 st.set_page_config(
 page_title='Quản lý Địa chỉ Nhà cung cấp',
-page_icon=“📦”,
-layout=“wide”,
+page_icon='📦',
+layout='wide',
 initial_sidebar_state=“expanded”
 )
 
