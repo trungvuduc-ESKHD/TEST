@@ -1,59 +1,73 @@
 import streamlit as st
 import datetime
-import pandas as pd
 import hashlib
+from supabase import create_client, Client
 
-st.set_page_config(page_title="Nhà cung cấp - Địa chỉ", layout="centered")
+# Kết nối Supabase
+SUPABASE_URL = "https://your-project.supabase.co"
+SUPABASE_KEY = "your-anon-or-service-role-key"
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Khởi tạo session lưu trữ dữ liệu
-if "supplier_addresses" not in st.session_state:
-    st.session_state.supplier_addresses = []
-
+# Hàm tạo ID duy nhất
 def hash_supplier_id(name, city):
     return hashlib.md5(f"{name}_{city}".encode()).hexdigest()[:8]
 
-def save_address_data(data):
+# Hàm lưu dữ liệu vào Supabase
+def save_to_supabase(data):
     supplier_id = hash_supplier_id(data["display_name"], data["city"])
     data["id"] = supplier_id
-    data["updated_at"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    data["updated_at"] = datetime.datetime.now().isoformat()
 
-    # Kiểm tra trùng
-    existing = next((i for i, d in enumerate(st.session_state.supplier_addresses) if d["id"] == supplier_id), None)
-    if existing is not None:
-        st.session_state.supplier_addresses[existing] = data
+    # Kiểm tra xem đã có hay chưa
+    existing = supabase.table("supplier_addresses").select("id").eq("id", supplier_id).execute()
+    if existing.data:
+        # Cập nhật
+        supabase.table("supplier_addresses").update(data).eq("id", supplier_id).execute()
     else:
-        st.session_state.supplier_addresses.append(data)
+        # Thêm mới
+        supabase.table("supplier_addresses").insert(data).execute()
 
-# Giao diện nhập
-st.title("📦 Thông tin địa chỉ Nhà cung cấp")
+# Giao diện Streamlit
+st.set_page_config(page_title="Địa chỉ Nhà cung cấp", layout="centered")
+st.title("📦 Cập nhật địa chỉ nhà cung cấp")
 
-with st.form("address_form"):
+with st.form("form"):
     display_name = st.text_input("Display Name *")
     street1 = st.text_input("Primary Address Street1 *")
     city = st.text_input("Primary Address City *")
     postal_code = st.text_input("Postal Code *")
     country_code = st.text_input("Country Code", value="VN", disabled=True)
 
-    submitted = st.form_submit_button("Gửi")
+    submit = st.form_submit_button("Gửi")
 
-    if submitted:
+    if submit:
         if not all([display_name, street1, city, postal_code]):
-            st.error("❌ Vui lòng điền đầy đủ thông tin bắt buộc.")
+            st.error("❌ Vui lòng điền đầy đủ các trường bắt buộc.")
         else:
             data = {
                 "display_name": display_name,
                 "street1": street1,
                 "city": city,
                 "postal_code": postal_code,
-                "country_code": country_code,
+                "country_code": "VN",  # Cố định
             }
-            save_address_data(data)
-            st.success("✅ Đã lưu thông tin thành công!")
+            try:
+                save_to_supabase(data)
+                st.success("✅ Dữ liệu đã được lưu vào Supabase thành công!")
+            except Exception as e:
+                st.error(f"❌ Lỗi khi lưu dữ liệu: {e}")
 
-# Hiển thị danh sách đã nhập
-if st.session_state.supplier_addresses:
-    st.subheader("📋 Danh sách địa chỉ đã lưu")
-    df = pd.DataFrame(st.session_state.supplier_addresses)
-    st.dataframe(df[["display_name", "street1", "city", "postal_code", "country_code", "updated_at"]])
-else:
-    st.info("Chưa có thông tin nào được nhập.")
+# Hiển thị dữ liệu từ Supabase
+st.markdown("---")
+st.subheader("📋 Danh sách địa chỉ đã lưu")
+
+try:
+    result = supabase.table("supplier_addresses").select("*").execute()
+    if result.data:
+        import pandas as pd
+        df = pd.DataFrame(result.data)
+        st.dataframe(df[["display_name", "street1", "city", "postal_code", "country_code", "updated_at"]])
+    else:
+        st.info("Chưa có dữ liệu nào.")
+except Exception as e:
+    st.error(f"Lỗi khi tải dữ liệu: {e}")
